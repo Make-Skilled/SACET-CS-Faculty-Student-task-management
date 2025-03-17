@@ -43,96 +43,69 @@
                 {% endwith %}
 
                 <!-- Statistics Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-2">Total Tasks</h3>
+                        <h3 class="text-lg font-semibold text-gray-700">Total Tasks</h3>
                         <p class="text-3xl font-bold text-indigo-600">{{ stats.total_tasks }}</p>
-                        <div class="mt-2 text-sm text-gray-600">
-                            <span class="mr-4">Available: {{ stats.available_tasks }}</span>
-                            <span class="mr-4">Pending: {{ stats.pending_tasks }}</span>
-                            <span>Completed: {{ stats.completed_tasks }}</span>
-                        </div>
                     </div>
                     <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-2">Total Students</h3>
-                        <p class="text-3xl font-bold text-green-600">{{ students|length }}</p>
+                        <h3 class="text-lg font-semibold text-gray-700">Total Submissions</h3>
+                        <p class="text-3xl font-bold text-indigo-600">{{ stats.total_submissions }}</p>
                     </div>
                     <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold mb-2">Department</h3>
-                        <p class="text-xl font-semibold text-gray-600">{{ faculty.department }}</p>
+                        <h3 class="text-lg font-semibold text-gray-700">Pending Review</h3>
+                        <p class="text-3xl font-bold text-yellow-600">{{ stats.pending_review }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold text-gray-700">Graded</h3>
+                        <p class="text-3xl font-bold text-green-600">{{ stats.graded }}</p>
                     </div>
                 </div>
 
-                <!-- Add New Task Form -->
-                <div class="bg-white rounded-lg shadow p-6 mb-6">
-                    <h2 class="text-xl font-bold mb-4">Add New Task</h2>
-                    <form action="{{ url_for('add_task') }}" method="POST">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Title</label>
-                                <input type="text" name="title" required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Deadline</label>
-                                <input type="date" name="deadline" required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700">Description</label>
-                            <textarea name="description" rows="3" required
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-                        </div>
-                        <div class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700">Total Marks</label>
-                            <input type="number" name="total_marks" required min="0" max="100"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        </div>
-                        <div class="mt-4">
-                            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-500">
-                                <i class="fas fa-plus mr-2"></i>Add Task
-                            </button>
-                        </div>
-                    </form>
+                <!-- Add Task Button -->
+                <div class="mb-6">
+                    <button onclick="showAddTaskModal()" 
+                            class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <i class="fas fa-plus mr-2"></i>Add New Task
+                    </button>
                 </div>
 
                 <!-- Recent Tasks -->
                 <div class="bg-white rounded-lg shadow p-6 mb-6">
-                    <h2 class="text-xl font-bold mb-4">All Tasks</h2>
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <h2 class="text-xl font-bold mb-4">Recent Tasks</h2>
+                    <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead>
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Marks</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Marks</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submissions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 {% for task in tasks %}
                                 <tr>
                                     <td class="px-6 py-4">{{ task.title }}</td>
-                                    <td class="px-6 py-4">{{ task.department }}</td>
-                                    <td class="px-6 py-4">{{ task.total_marks }}</td>
-                                    <td class="px-6 py-4">{{ task.deadline.strftime('%Y-%m-%d') }}</td>
                                     <td class="px-6 py-4">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            {% if task.status == 'available' %}bg-green-100 text-green-800
-                                            {% elif task.status == 'pending' %}bg-yellow-100 text-yellow-800
-                                            {% else %}bg-blue-100 text-blue-800{% endif %}">
-                                            {{ task.status|title }}
+                                        <div class="truncate max-w-xs" title="{{ task.description }}">
+                                            {{ task.description }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">{{ task.deadline.strftime('%Y-%m-%d') }}</td>
+                                    <td class="px-6 py-4">{{ task.total_marks }}</td>
+                                    <td class="px-6 py-4">
+                                        {% set submission_count = all_submissions|selectattr('task_title', 'equalto', task.title)|list|length %}
+                                        <span class="px-2 py-1 text-sm rounded-full bg-blue-100 text-blue-800">
+                                            {{ submission_count }} submissions
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4">{{ task.student_name }}</td>
                                 </tr>
                                 {% endfor %}
                                 {% if not tasks %}
                                 <tr>
-                                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                                         No tasks created yet
                                     </td>
                                 </tr>
@@ -142,25 +115,68 @@
                     </div>
                 </div>
 
-                <!-- Recent Submissions -->
+                <!-- All Submissions -->
                 <div class="bg-white rounded-lg shadow p-6">
-                    <h2 class="text-xl font-bold mb-4">Recent Submissions</h2>
-                    <div class="space-y-4">
-                        {% for submission in recent_submissions %}
-                        <div class="border-l-4 border-indigo-500 pl-4">
-                            <div class="text-sm text-gray-600">
-                                {{ submission.student_name }} submitted {{ submission.task_title }}
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                {{ submission.submitted_at.strftime('%Y-%m-%d %H:%M') }}
-                            </div>
-                        </div>
-                        {% endfor %}
-                        {% if not recent_submissions %}
-                        <div class="text-gray-500 text-sm">
-                            No recent submissions
-                        </div>
-                        {% endif %}
+                    <h2 class="text-xl font-bold mb-4">All Submissions</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Title</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted On</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for submission in all_submissions %}
+                                <tr>
+                                    <td class="px-6 py-4">{{ submission.task_title }}</td>
+                                    <td class="px-6 py-4">{{ submission.student_name }}</td>
+                                    <td class="px-6 py-4">{{ submission.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            {% if submission.status == 'submitted' %}bg-yellow-100 text-yellow-800
+                                            {% else %}bg-green-100 text-green-800{% endif %}">
+                                            {{ submission.status|title }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {% if submission.grade %}
+                                            <span class="font-medium text-green-600">{{ submission.grade }}/{{ submission.task_total_marks }}</span>
+                                        {% else %}
+                                            <span class="text-yellow-600">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex space-x-2">
+                                            {% if submission.file_path %}
+                                            <a href="{{ url_for('download_file', filename=submission.file_path) }}" 
+                                               class="text-indigo-600 hover:text-indigo-900">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                            {% endif %}
+                                            {% if not submission.grade %}
+                                            <button onclick="showEvaluateModal('{{ submission._id }}')" 
+                                                    class="text-green-600 hover:text-green-900">
+                                                <i class="fas fa-check-circle"></i> Evaluate
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not all_submissions %}
+                                <tr>
+                                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                        No submissions found
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -175,3 +191,144 @@
     </div>
 </body>
 </html>
+
+<!-- Evaluate Modal -->
+<div id="evaluateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full" style="z-index: 100;">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-bold leading-6 text-gray-900 mb-4">Evaluate Submission</h3>
+            <form id="evaluateForm" action="{{ url_for('evaluate_submission') }}" method="POST">
+                <input type="hidden" id="submissionId" name="submission_id">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Grade (out of 100)
+                    </label>
+                    <input type="number" 
+                           name="grade" 
+                           min="0"
+                           max="100"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Feedback
+                    </label>
+                    <textarea name="feedback"
+                              rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="Add feedback for the student..."></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" 
+                            onclick="closeEvaluateModal()"
+                            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Submit Grade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="addTaskModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full" style="z-index: 100;">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-bold leading-6 text-gray-900 mb-4">Add New Task</h3>
+            <form action="{{ url_for('add_task') }}" method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input type="text" 
+                               name="title" 
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Enter task title">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea name="description" 
+                                  required
+                                  rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  placeholder="Enter task description"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                        <input type="date" 
+                               name="deadline" 
+                               required
+                               min="{{ today }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
+                        <input type="number" 
+                               name="total_marks" 
+                               required
+                               min="0"
+                               max="100"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Enter total marks">
+                    </div>
+
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" 
+                                onclick="closeAddTaskModal()"
+                                class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                            Add Task
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showEvaluateModal(submissionId) {
+        document.getElementById('submissionId').value = submissionId;
+        document.getElementById('evaluateModal').classList.remove('hidden');
+    }
+
+    function closeEvaluateModal() {
+        document.getElementById('evaluateModal').classList.add('hidden');
+        document.getElementById('evaluateForm').reset();
+    }
+
+    document.getElementById('evaluateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const grade = parseInt(this.elements['grade'].value);
+        
+        if (isNaN(grade) || grade < 0 || grade > 100) {
+            alert('Please enter a valid grade between 0 and 100');
+            return;
+        }
+
+        this.submit();
+    });
+
+    function showAddTaskModal() {
+        document.getElementById('addTaskModal').classList.remove('hidden');
+    }
+
+    function closeAddTaskModal() {
+        document.getElementById('addTaskModal').classList.add('hidden');
+    }
+</script>

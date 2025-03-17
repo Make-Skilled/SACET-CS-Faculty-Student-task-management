@@ -447,128 +447,61 @@ def faculty_dashboard():
     try:
         faculty_id = ObjectId(session['user_id'])
         
-        # Get faculty data from database
+        # Get faculty data
         faculty = users_collection.find_one({'_id': faculty_id})
         if not faculty:
             session.clear()
             flash('User not found', 'error')
             return redirect(url_for('login'))
         
-        # Get all tasks created by this faculty
-        tasks = list(tasks_collection.aggregate([
-            {
-                '$match': {
-                    'faculty_id': faculty_id
-                }
-            },
-            {
-                '$lookup': {
-                    'from': 'started_tasks',
-                    'localField': '_id',
-                    'foreignField': 'task_id',
-                    'as': 'started_task'
-                }
-            },
-            {
-                '$lookup': {
-                    'from': 'users',
-                    'localField': 'started_task.student_id',
-                    'foreignField': '_id',
-                    'as': 'student'
-                }
-            },
-            {
-                '$addFields': {
-                    'student_name': {
-                        '$ifNull': [
-                            {'$arrayElemAt': ['$student.full_name', 0]},
-                            'Not assigned'
-                        ]
-                    }
-                }
-            },
-            {
-                '$sort': {'created_at': -1}
-            }
-        ]))
+        # Get all tasks by this faculty
+        faculty_tasks = list(tasks_collection.find({
+            'faculty_id': faculty_id
+        }).sort('created_at', -1))  # Sort by newest first
         
-        # Get recent submissions for tasks created by this faculty
-        recent_submissions = list(started_tasks_collection.aggregate([
-            {
-                '$match': {
-                    'status': 'completed'
-                }
-            },
-            {
-                '$lookup': {
-                    'from': 'tasks',
-                    'localField': 'task_id',
-                    'foreignField': '_id',
-                    'as': 'task'
-                }
-            },
-            {
-                '$unwind': '$task'
-            },
-            {
-                '$match': {
-                    'task.faculty_id': faculty_id
-                }
-            },
-            {
-                '$lookup': {
-                    'from': 'users',
-                    'localField': 'student_id',
-                    'foreignField': '_id',
-                    'as': 'student'
-                }
-            },
-            {
-                '$unwind': '$student'
-            },
-            {
-                '$project': {
-                    'student_name': '$student.full_name',
-                    'task_title': '$task.title',
-                    'submitted_at': 1,
-                    'grade': 1,
-                    'submission_text': 1,
-                    'task_id': 1,
-                    'student_id': 1
-                }
-            },
-            {
-                '$sort': {'submitted_at': -1}
-            },
-            {
-                '$limit': 5
-            }
-        ]))
-        
-        # Get students in faculty's department
-        students = list(users_collection.find({
-            'user_type': 'student',
-            'department': faculty['department']
+        # Get all submissions
+        submissions = list(started_tasks_collection.find({
+            'task_id': {'$in': [task['_id'] for task in faculty_tasks]},
+            'status': {'$in': ['completed', 'submitted']}
         }))
-
-        # Calculate task statistics
-        total_tasks = len(tasks)
-        available_tasks = sum(1 for task in tasks if task.get('status') == 'available')
-        pending_tasks = sum(1 for task in tasks if task.get('status') == 'pending')
-        completed_tasks = sum(1 for task in tasks if task.get('status') == 'completed')
         
-        return render_template('faculty/dashboard.html', 
+        # Enhance submissions with task and student details
+        enhanced_submissions = []
+        for submission in submissions:
+            task = tasks_collection.find_one({'_id': submission['task_id']})
+            student = users_collection.find_one({'_id': submission['student_id']})
+            if task and student:
+                enhanced_submissions.append({
+                    'task_title': task['title'],
+                    'student_name': student['full_name'],
+                    'student_email': student['email'],
+                    'submitted_at': submission['submitted_at'],
+                    'status': submission['status'],
+                    'grade': submission.get('grade'),
+                    'feedback': submission.get('feedback'),
+                    'task_total_marks': task['total_marks'],
+                    'file_path': submission.get('file_path'),
+                    '_id': submission['_id']
+                })
+        
+        # Calculate statistics
+        stats = {
+            'total_tasks': len(faculty_tasks),
+            'total_submissions': len(enhanced_submissions),
+            'pending_review': len([s for s in enhanced_submissions if not s.get('grade')]),
+            'graded': len([s for s in enhanced_submissions if s.get('grade')])
+        }
+        
+        # Get today's date for the deadline input min attribute
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        return render_template('faculty/dashboard.html',
                              faculty=faculty,
-                             tasks=tasks,
-                             students=students,
-                             recent_submissions=recent_submissions,
-                             stats={
-                                 'total_tasks': total_tasks,
-                                 'available_tasks': available_tasks,
-                                 'pending_tasks': pending_tasks,
-                                 'completed_tasks': completed_tasks
-                             })
-                             
+                             tasks=faculty_tasks,
+                             all_submissions=enhanced_submissions,
+                             stats=stats,
+                             today=today)
+
     except Exception as e:
         print(f"Error in faculty_dashboard: {str(e)}")
         flash('An error occurred while loading the dashboard', 'error')
@@ -718,6 +651,55 @@ def download_file(filename):
         print(f"Error in download_file: {str(e)}")
         flash('Error downloading file', 'error')
         return redirect(url_for('student_dashboard'))
+
+@app.route('/submission/evaluate', methods=['POST'])
+@login_required
+@faculty_required
+def evaluate_submission():
+    try:
+        submission_id = request.form.get('submission_id')
+        grade = request.form.get('grade')
+        feedback = request.form.get('feedback', '')
+
+        # Validate inputs
+        if not submission_id or not grade:
+            flash('Missing required fields', 'error')
+            return redirect(url_for('faculty_dashboard'))
+
+        try:
+            grade = int(grade)
+            if grade < 0 or grade > 100:
+                flash('Grade must be between 0 and 100', 'error')
+                return redirect(url_for('faculty_dashboard'))
+        except ValueError:
+            flash('Invalid grade value', 'error')
+            return redirect(url_for('faculty_dashboard'))
+
+        # Update the submission
+        result = started_tasks_collection.update_one(
+            {'_id': ObjectId(submission_id)},
+            {
+                '$set': {
+                    'grade': grade,
+                    'feedback': feedback,
+                    'status': 'completed',
+                    'graded_at': datetime.utcnow(),
+                    'graded_by': ObjectId(session['user_id'])
+                }
+            }
+        )
+
+        if result.modified_count > 0:
+            flash('Submission graded successfully', 'success')
+        else:
+            flash('Submission not found or already graded', 'error')
+
+        return redirect(url_for('faculty_dashboard'))
+
+    except Exception as e:
+        print(f"Error in evaluate_submission: {str(e)}")
+        flash('An error occurred while evaluating the submission', 'error')
+        return redirect(url_for('faculty_dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True)
