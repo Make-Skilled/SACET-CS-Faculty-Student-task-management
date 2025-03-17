@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from functools import wraps
 import re
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = 'TaskManagementSystem@$k'
@@ -30,6 +33,12 @@ users_collection = db['users']
 tasks_collection = db['tasks']
 started_tasks_collection = db['started_tasks']
 submissions_collection = db['submissions']  # New collection for submissions
+
+# Email configuration
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USERNAME = "kr4785543@gmail.com"  # Replace with your email
+SMTP_PASSWORD = "qhuzwfrdagfyqemk"     # Replace with your app password   # Replace with your app password
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -567,7 +576,7 @@ def submit_task():
             flash('Invalid task ID', 'error')
             return redirect(url_for('student_dashboard'))
 
-        # Check if task exists and is available
+        # Check if task exists and get task details
         task = tasks_collection.find_one({
             '_id': ObjectId(task_id)
         })
@@ -575,6 +584,20 @@ def submit_task():
         if not task:
             flash('Task not found', 'error')
             return redirect(url_for('student_dashboard'))
+
+        # Get faculty details
+        faculty = users_collection.find_one({
+            '_id': task['faculty_id']
+        })
+
+        if not faculty:
+            flash('Faculty not found', 'error')
+            return redirect(url_for('student_dashboard'))
+
+        # Get student details
+        student = users_collection.find_one({
+            '_id': ObjectId(session['user_id'])
+        })
 
         # Handle file upload
         if 'task_file' not in request.files:
@@ -602,12 +625,12 @@ def submit_task():
                 'student_id': ObjectId(session['user_id']),
                 'comments': comments,
                 'submitted_at': datetime.utcnow(),
-                'status': 'submitted',  # Changed from 'completed' to 'submitted'
+                'status': 'submitted',
                 'file_path': final_filename
             }
 
             # Insert or update submission in started_tasks_collection
-            started_tasks_collection.update_one(
+            result = started_tasks_collection.update_one(
                 {
                     'task_id': ObjectId(task_id),
                     'student_id': ObjectId(session['user_id'])
@@ -616,14 +639,29 @@ def submit_task():
                 upsert=True
             )
 
-            flash('Task submitted successfully', 'success')
+            if result.modified_count > 0 or result.upserted_id:
+                # Send email notification to faculty
+                notification_sent = send_submission_notification(
+                    task_id=task_id,
+                    student_name=student['full_name'],
+                    task_title=task['title'],
+                    faculty_email=faculty['email']
+                )
+                
+                if notification_sent:
+                    flash('Task submitted successfully and faculty notified', 'success')
+                else:
+                    flash('Task submitted successfully but faculty notification failed', 'warning')
+            else:
+                flash('Error submitting task', 'error')
+
             return redirect(url_for('student_dashboard'))
         else:
             flash('Invalid file type. Please upload PDF or Word document.', 'error')
             return redirect(url_for('student_dashboard'))
 
     except Exception as e:
-        print(f"Error in submit_task: {str(e)}")  # Log the error
+        print(f"Error in submit_task: {str(e)}")
         flash('An error occurred while submitting the task', 'error')
         return redirect(url_for('student_dashboard'))
 
@@ -700,6 +738,58 @@ def evaluate_submission():
         print(f"Error in evaluate_submission: {str(e)}")
         flash('An error occurred while evaluating the submission', 'error')
         return redirect(url_for('faculty_dashboard'))
+
+def send_email(subject, body, recipient_email):
+    try:
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_USERNAME
+        msg['To'] = recipient_email
+        msg['Subject'] = subject
+
+        # Add body to email
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Create SMTP session
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            
+            # Send email
+            server.send_message(msg)
+            
+        print(f"Email sent successfully to: {recipient_email}")
+        return True
+
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False
+
+def send_submission_notification(task_id, student_name, task_title, faculty_email):
+    try:
+        submission_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        subject = f'New Submission: {task_title}'
+        body = f"""
+Dear Faculty,
+
+A new submission has been received for your task.
+
+Submission Details:
+- Task: {task_title}
+- Student: {student_name}
+- Submitted on: {submission_time}
+
+Please log in to the Task Management System to review and grade the submission.
+
+Best regards,
+Task Management System Team
+        """
+
+        return send_email(subject, body, faculty_email)
+
+    except Exception as e:
+        print(f"Error preparing submission notification: {str(e)}")
+        return False
 
 if __name__ == '__main__':
     app.run(debug=True)
