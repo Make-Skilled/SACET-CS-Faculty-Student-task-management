@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Dashboard - Task Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex flex-col">
+        <!-- Navigation Bar -->
+        <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <i class="fas fa-tasks text-2xl"></i>
+                        <span class="ml-2 text-xl font-bold">Faculty Dashboard</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm">Welcome, {{ faculty.full_name }}</span>
+                        <a href="/logout" class="bg-red-500 hover:bg-red-400 px-4 py-2 rounded">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="flex-grow p-6">
+            <div class="max-w-7xl mx-auto">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-2">Total Tasks</h3>
+                        <p class="text-3xl font-bold text-indigo-600">{{ stats.total_tasks }}</p>
+                        <div class="mt-2 text-sm text-gray-600">
+                            <span class="mr-4">Available: {{ stats.available_tasks }}</span>
+                            <span class="mr-4">Pending: {{ stats.pending_tasks }}</span>
+                            <span>Completed: {{ stats.completed_tasks }}</span>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-2">Total Students</h3>
+                        <p class="text-3xl font-bold text-green-600">{{ students|length }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-2">Department</h3>
+                        <p class="text-xl font-semibold text-gray-600">{{ faculty.department }}</p>
+                    </div>
+                </div>
+
+                <!-- Add New Task Form -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-bold mb-4">Add New Task</h2>
+                    <form action="{{ url_for('add_task') }}" method="POST">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Title</label>
+                                <input type="text" name="title" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Deadline</label>
+                                <input type="date" name="deadline" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700">Description</label>
+                            <textarea name="description" rows="3" required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700">Total Marks</label>
+                            <input type="number" name="total_marks" required min="0" max="100"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div class="mt-4">
+                            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-500">
+                                <i class="fas fa-plus mr-2"></i>Add Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Recent Tasks -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-bold mb-4">All Tasks</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Marks</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for task in tasks %}
+                                <tr>
+                                    <td class="px-6 py-4">{{ task.title }}</td>
+                                    <td class="px-6 py-4">{{ task.department }}</td>
+                                    <td class="px-6 py-4">{{ task.total_marks }}</td>
+                                    <td class="px-6 py-4">{{ task.deadline.strftime('%Y-%m-%d') }}</td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 py-1 text-sm rounded-full 
+                                            {% if task.status == 'completed' %}bg-green-100 text-green-800
+                                            {% elif task.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                            {% else %}bg-blue-100 text-blue-800{% endif %}">
+                                            {{ task.status|title }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {% if task.student_name %}
+                                            {{ task.student_name }}
+                                        {% else %}
+                                            <span class="text-gray-400">Not assigned</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not tasks %}
+                                <tr>
+                                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                        No tasks created yet
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Submissions -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-bold mb-4">Recent Submissions</h2>
+                    <div class="space-y-4">
+                        {% for submission in recent_submissions %}
+                        <div class="border-l-4 border-indigo-500 pl-4">
+                            <div class="text-sm text-gray-600">
+                                {{ submission.student[0].full_name }} submitted {{ submission.task[0].title }}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                {{ submission.submitted_at.strftime('%Y-%m-%d %H:%M') }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-4">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <p>&copy; 2023 Task Management System. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

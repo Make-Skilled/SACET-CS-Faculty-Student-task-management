@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty & Student Task Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add Alpine.js for interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex flex-col">
+        <!-- Navigation Bar -->
+        <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-tasks text-2xl"></i>
+                        <span class="text-xl font-bold">Task Management System</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="/login" class="bg-indigo-500 hover:bg-indigo-400 px-4 py-2 rounded transition duration-300 ease-in-out flex items-center">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Login
+                        </a>
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="bg-green-500 hover:bg-green-400 px-4 py-2 rounded transition duration-300 ease-in-out flex items-center">
+                                <i class="fas fa-user-plus mr-2"></i> Register
+                                <i class="fas fa-chevron-down ml-2"></i>
+                            </button>
+                            <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
+                                <a href="/register/student" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-user-graduate mr-2"></i> Register as Student
+                                </a>
+                                <a href="/register/faculty" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-chalkboard-teacher mr-2"></i> Register as Faculty
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <div class="bg-indigo-700 text-white py-16">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h1 class="text-4xl font-bold mb-4">Streamline Your Academic Tasks</h1>
+                <p class="text-xl text-indigo-200">Efficient task management solution for faculty and students</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-2xl font-bold mb-4 flex items-center">
+                    <i class="fas fa-clipboard-list text-indigo-600 mr-2"></i>
+                    Welcome to Task Management System
+                </h2>
+                <p class="text-gray-600 mb-4">This system helps faculty members assign tasks to students and track their progress efficiently.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <div class="border rounded-lg p-6 bg-indigo-50 hover:shadow-lg transition duration-300">
+                        <h3 class="text-xl font-bold mb-3 flex items-center text-indigo-700">
+                            <i class="fas fa-chalkboard-teacher mr-2"></i>
+                            For Faculty
+                        </h3>
+                        <ul class="list-none text-gray-700 space-y-3">
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Create and assign tasks to students</li>
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Track task completion status</li>
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Set deadlines for assignments</li>
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Review submitted work</li>
+                        </ul>
+                    </div>
+
+                    <div class="border rounded-lg p-6 bg-green-50 hover:shadow-lg transition duration-300">
+                        <h3 class="text-xl font-bold mb-3 flex items-center text-green-700">
+                            <i class="fas fa-user-graduate mr-2"></i>
+                            For Students
+                        </h3>
+                        <ul class="list-none text-gray-700 space-y-3">
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>View assigned tasks</li>
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Submit completed work</li>
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Track submission deadlines</li>
+                            <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Mark tasks as completed</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-6 bg-gray-50 rounded-lg">
+                    <h3 class="text-xl font-bold mb-3 flex items-center">
+                        <i class="fas fa-tasks text-gray-700 mr-2"></i>
+                        Sample Tasks
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="border rounded-lg p-4 bg-white hover:shadow-md transition duration-300">
+                            <h4 class="font-semibold flex items-center">
+                                <i class="fas fa-file-alt text-indigo-600 mr-2"></i>
+                                Research Paper Submission
+                            </h4>
+                            <p class="text-gray-600">Submit your research paper on Machine Learning basics</p>
+                            <div class="mt-2 text-sm text-gray-500 flex items-center">
+                                <i class="far fa-clock mr-2"></i>
+                                Deadline: December 1, 2023
+                            </div>
+                        </div>
+                        <div class="border rounded-lg p-4 bg-white hover:shadow-md transition duration-300">
+                            <h4 class="font-semibold flex items-center">
+                                <i class="fas fa-code text-indigo-600 mr-2"></i>
+                                Programming Assignment
+                            </h4>
+                            <p class="text-gray-600">Complete the Python programming exercises</p>
+                            <div class="mt-2 text-sm text-gray-500 flex items-center">
+                                <i class="far fa-clock mr-2"></i>
+                                Deadline: December 15, 2023
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="bg-indigo-100 py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                    <div class="p-6">
+                        <div class="text-4xl font-bold text-indigo-600">500+</div>
+                        <div class="text-gray-600">Active Users</div>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-4xl font-bold text-indigo-600">1000+</div>
+                        <div class="text-gray-600">Tasks Completed</div>
+                    </div>
+                    <div class="p-6">
+                        <div class="text-4xl font-bold text-indigo-600">50+</div>
+                        <div class="text-gray-600">Faculty Members</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">Quick Links</h4>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="hover:text-indigo-400 transition">Home</a></li>
+                            <li><a href="#" class="hover:text-indigo-400 transition">About</a></li>
+                            <li><a href="#" class="hover:text-indigo-400 transition">Contact</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">Contact Us</h4>
+                        <ul class="space-y-2">
+                            <li class="flex items-center">
+                                <i class="fas fa-envelope mr-2"></i>
+                                support@taskmanagement.com
+                            </li>
+                            <li class="flex items-center">
+                                <i class="fas fa-phone mr-2"></i>
+                                +1 234 567 8900
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4">Follow Us</h4>
+                        <div class="flex space-x-4">
+                            <a href="#" class="hover:text-indigo-400 transition"><i class="fab fa-facebook fa-lg"></i></a>
+                            <a href="#" class="hover:text-indigo-400 transition"><i class="fab fa-twitter fa-lg"></i></a>
+                            <a href="#" class="hover:text-indigo-400 transition"><i class="fab fa-linkedin fa-lg"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400">
+                    <p>&copy; 2023 Task Management System. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
