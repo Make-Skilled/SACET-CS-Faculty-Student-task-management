@@ -58,6 +58,26 @@
                     </div>
                 </div>
 
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-2">Available Tasks</h3>
+                        <p class="text-3xl font-bold text-blue-600">{{ stats.available }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-2">In Progress</h3>
+                        <p class="text-3xl font-bold text-yellow-600">{{ stats.in_progress }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-2">Completed</h3>
+                        <p class="text-3xl font-bold text-green-600">{{ stats.completed }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h3 class="text-lg font-semibold mb-2">Total Tasks</h3>
+                        <p class="text-3xl font-bold text-indigo-600">{{ stats.total_tasks }}</p>
+                    </div>
+                </div>
+
                 <!-- Pending Tasks -->
                 <div class="bg-white rounded-lg shadow p-6 mb-6">
                     <h2 class="text-xl font-bold mb-4">Tasks To Do</h2>
@@ -131,7 +151,7 @@
 
                 <!-- Completed Tasks -->
                 <div class="bg-white rounded-lg shadow p-6">
-                    <h2 class="text-xl font-bold mb-4">Completed Tasks</h2>
+                    <h2 class="text-xl font-bold mb-4">Submitted Tasks</h2>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead>
@@ -150,8 +170,8 @@
                                     <td class="px-6 py-4">{{ task.faculty_name }}</td>
                                     <td class="px-6 py-4">{{ task.submitted_at.strftime('%Y-%m-%d') }}</td>
                                     <td class="px-6 py-4">
-                                        <span class="px-2 py-1 text-sm rounded-full bg-green-100 text-green-800">
-                                            Completed
+                                        <span class="px-2 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800">
+                                            Submitted
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
@@ -163,6 +183,13 @@
                                     </td>
                                 </tr>
                                 {% endfor %}
+                                {% if not completed_tasks %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                        No submitted tasks
+                                    </td>
+                                </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>

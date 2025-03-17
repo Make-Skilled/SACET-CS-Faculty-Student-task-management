@@ -31,6 +31,9 @@ tasks_collection = db['tasks']
 started_tasks_collection = db['started_tasks']
 submissions_collection = db['submissions']  # New collection for submissions
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 def is_valid_email(email):
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(pattern, email) is not None
@@ -261,25 +264,45 @@ def faculty_register():
 @app.route('/dashboard/student')
 @login_required
 def student_dashboard():
-    # Verify user is a student
-    if session.get('user_type') != 'student':
-        flash('Access denied. Students only.', 'error')
-        return redirect(url_for('index'))
-
     try:
+        student_id = ObjectId(session['user_id'])
+        
         # Get student data from database
-        student = users_collection.find_one({'_id': ObjectId(session['user_id'])})
+        student = users_collection.find_one({'_id': student_id})
         if not student:
             session.clear()
             flash('User not found', 'error')
             return redirect(url_for('login'))
-        
-        # Get available tasks from tasks_collection
-        pipeline = [
+
+        # Get tasks that the student hasn't started yet
+        available_tasks = list(tasks_collection.aggregate([
             {
                 '$match': {
-                    'department': student['department'],
-                    'status': 'available'
+                    'department': student['department']
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'started_tasks',
+                    'let': { 'taskId': '$_id' },
+                    'pipeline': [
+                        {
+                            '$match': {
+                                '$expr': {
+                                    '$and': [
+                                        { '$eq': ['$task_id', '$$taskId'] },
+                                        { '$eq': ['$student_id', student_id] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    'as': 'started'
+                }
+            },
+            {
+                '$match': {
+                    'started': { '$size': 0 }
                 }
             },
             {
@@ -303,15 +326,14 @@ def student_dashboard():
             {
                 '$sort': {'deadline': 1}
             }
-        ]
-        available_tasks = list(tasks_collection.aggregate(pipeline))
+        ]))
 
-        # Get started tasks
-        started_pipeline = [
+        # Get tasks that are in progress (started but not completed)
+        started_tasks = list(started_tasks_collection.aggregate([
             {
                 '$match': {
-                    'student_id': ObjectId(student['_id']),
-                    'status': 'in_progress'
+                    'student_id': student_id,
+                    'status': {'$nin': ['completed', 'submitted']}
                 }
             },
             {
@@ -319,48 +341,43 @@ def student_dashboard():
                     'from': 'tasks',
                     'localField': 'task_id',
                     'foreignField': '_id',
-                    'as': 'task_info'
+                    'as': 'task'
                 }
             },
             {
-                '$addFields': {
-                    'task_info': {'$arrayElemAt': ['$task_info', 0]}
-                }
+                '$unwind': '$task'
             },
             {
                 '$lookup': {
                     'from': 'users',
-                    'localField': 'task_info.faculty_id',
+                    'localField': 'task.faculty_id',
                     'foreignField': '_id',
                     'as': 'faculty'
                 }
             },
             {
-                '$addFields': {
-                    'title': '$task_info.title',
-                    'description': '$task_info.description',
-                    'deadline': '$task_info.deadline',
-                    'department': '$task_info.department',
+                '$project': {
+                    'title': '$task.title',
+                    'description': '$task.description',
                     'faculty_name': {
                         '$ifNull': [
                             {'$arrayElemAt': ['$faculty.full_name', 0]},
                             'Unknown Faculty'
                         ]
-                    }
+                    },
+                    'deadline': '$task.deadline',
+                    'status': 1,
+                    '_id': 1
                 }
-            },
-            {
-                '$sort': {'started_at': -1}
             }
-        ]
-        started_tasks = list(started_tasks_collection.aggregate(started_pipeline))
+        ]))
 
-        # Get completed tasks
-        completed_pipeline = [
+        # Get completed/submitted tasks
+        completed_tasks = list(started_tasks_collection.aggregate([
             {
                 '$match': {
-                    'student_id': ObjectId(student['_id']),
-                    'status': 'completed'
+                    'student_id': student_id,
+                    'status': {'$in': ['completed', 'submitted']}
                 }
             },
             {
@@ -368,48 +385,56 @@ def student_dashboard():
                     'from': 'tasks',
                     'localField': 'task_id',
                     'foreignField': '_id',
-                    'as': 'task_info'
+                    'as': 'task'
                 }
             },
             {
-                '$addFields': {
-                    'task_info': {'$arrayElemAt': ['$task_info', 0]}
-                }
+                '$unwind': '$task'
             },
             {
                 '$lookup': {
                     'from': 'users',
-                    'localField': 'task_info.faculty_id',
+                    'localField': 'task.faculty_id',
                     'foreignField': '_id',
                     'as': 'faculty'
                 }
             },
             {
-                '$addFields': {
-                    'title': '$task_info.title',
-                    'description': '$task_info.description',
-                    'deadline': '$task_info.deadline',
-                    'department': '$task_info.department',
+                '$project': {
+                    'title': '$task.title',
                     'faculty_name': {
                         '$ifNull': [
                             {'$arrayElemAt': ['$faculty.full_name', 0]},
                             'Unknown Faculty'
                         ]
-                    }
+                    },
+                    'submitted_at': 1,
+                    'status': 1,
+                    'grade': 1,
+                    'comments': 1,
+                    'file_path': 1
                 }
             },
             {
                 '$sort': {'submitted_at': -1}
             }
-        ]
-        completed_tasks = list(started_tasks_collection.aggregate(completed_pipeline))
+        ]))
+
+        # Calculate statistics
+        stats = {
+            'available': len(available_tasks),
+            'in_progress': len(started_tasks),
+            'completed': len(completed_tasks),
+            'total_tasks': len(available_tasks) + len(started_tasks) + len(completed_tasks)
+        }
 
         return render_template('student/dashboard.html',
                              student=student,
                              available_tasks=available_tasks,
                              started_tasks=started_tasks,
-                             completed_tasks=completed_tasks)
-                             
+                             completed_tasks=completed_tasks,
+                             stats=stats)
+
     except Exception as e:
         print(f"Error in student_dashboard: {str(e)}")
         flash('An error occurred while loading the dashboard', 'error')
@@ -420,18 +445,74 @@ def student_dashboard():
 @faculty_required
 def faculty_dashboard():
     try:
+        faculty_id = ObjectId(session['user_id'])
+        
         # Get faculty data from database
-        faculty = users_collection.find_one({'_id': ObjectId(session['user_id'])})
+        faculty = users_collection.find_one({'_id': faculty_id})
         if not faculty:
             session.clear()
             flash('User not found', 'error')
             return redirect(url_for('login'))
         
-        # Get all tasks created by this faculty with student information
-        pipeline = [
+        # Get all tasks created by this faculty
+        tasks = list(tasks_collection.aggregate([
             {
                 '$match': {
-                    'faculty_id': ObjectId(session['user_id'])
+                    'faculty_id': faculty_id
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'started_tasks',
+                    'localField': '_id',
+                    'foreignField': 'task_id',
+                    'as': 'started_task'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'users',
+                    'localField': 'started_task.student_id',
+                    'foreignField': '_id',
+                    'as': 'student'
+                }
+            },
+            {
+                '$addFields': {
+                    'student_name': {
+                        '$ifNull': [
+                            {'$arrayElemAt': ['$student.full_name', 0]},
+                            'Not assigned'
+                        ]
+                    }
+                }
+            },
+            {
+                '$sort': {'created_at': -1}
+            }
+        ]))
+        
+        # Get recent submissions for tasks created by this faculty
+        recent_submissions = list(started_tasks_collection.aggregate([
+            {
+                '$match': {
+                    'status': 'completed'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'tasks',
+                    'localField': 'task_id',
+                    'foreignField': '_id',
+                    'as': 'task'
+                }
+            },
+            {
+                '$unwind': '$task'
+            },
+            {
+                '$match': {
+                    'task.faculty_id': faculty_id
                 }
             },
             {
@@ -443,20 +524,26 @@ def faculty_dashboard():
                 }
             },
             {
-                '$addFields': {
-                    'student_name': {
-                        '$ifNull': [
-                            {'$arrayElemAt': ['$student.full_name', 0]},
-                            None
-                        ]
-                    }
+                '$unwind': '$student'
+            },
+            {
+                '$project': {
+                    'student_name': '$student.full_name',
+                    'task_title': '$task.title',
+                    'submitted_at': 1,
+                    'grade': 1,
+                    'submission_text': 1,
+                    'task_id': 1,
+                    'student_id': 1
                 }
             },
             {
-                '$sort': {'created_at': -1}
+                '$sort': {'submitted_at': -1}
+            },
+            {
+                '$limit': 5
             }
-        ]
-        tasks = list(tasks_collection.aggregate(pipeline))
+        ]))
         
         # Get students in faculty's department
         students = list(users_collection.find({
@@ -466,14 +553,15 @@ def faculty_dashboard():
 
         # Calculate task statistics
         total_tasks = len(tasks)
-        available_tasks = sum(1 for task in tasks if task['status'] == 'available')
-        pending_tasks = sum(1 for task in tasks if task['status'] == 'pending')
-        completed_tasks = sum(1 for task in tasks if task['status'] == 'completed')
+        available_tasks = sum(1 for task in tasks if task.get('status') == 'available')
+        pending_tasks = sum(1 for task in tasks if task.get('status') == 'pending')
+        completed_tasks = sum(1 for task in tasks if task.get('status') == 'completed')
         
         return render_template('faculty/dashboard.html', 
                              faculty=faculty,
                              tasks=tasks,
                              students=students,
+                             recent_submissions=recent_submissions,
                              stats={
                                  'total_tasks': total_tasks,
                                  'available_tasks': available_tasks,
@@ -482,7 +570,7 @@ def faculty_dashboard():
                              })
                              
     except Exception as e:
-        print(f"Error in faculty_dashboard: {str(e)}")  # Add logging
+        print(f"Error in faculty_dashboard: {str(e)}")
         flash('An error occurred while loading the dashboard', 'error')
         return redirect(url_for('login'))
 
@@ -548,12 +636,11 @@ def submit_task():
 
         # Check if task exists and is available
         task = tasks_collection.find_one({
-            '_id': ObjectId(task_id),
-            'status': 'available'
+            '_id': ObjectId(task_id)
         })
 
         if not task:
-            flash('Task not found or already submitted', 'error')
+            flash('Task not found', 'error')
             return redirect(url_for('student_dashboard'))
 
         # Handle file upload
@@ -566,36 +653,70 @@ def submit_task():
             flash('No file selected', 'error')
             return redirect(url_for('student_dashboard'))
 
-        # Create submission document
-        submission_data = {
-            'task_id': ObjectId(task_id),
-            'student_id': ObjectId(session['user_id']),
-            'comments': comments,
-            'submitted_at': datetime.utcnow(),
-            'status': 'completed'
-        }
+        if file and allowed_file(file.filename):
+            # Generate a secure filename with timestamp
+            filename = secure_filename(file.filename)
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            final_filename = f"{session['user_id']}_{timestamp}_{filename}"
+            
+            # Save the file
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], final_filename)
+            file.save(file_path)
 
-        # Insert submission into started_tasks_collection
-        started_tasks_collection.insert_one(submission_data)
-
-        # Update task status
-        tasks_collection.update_one(
-            {'_id': ObjectId(task_id)},
-            {
-                '$set': {
-                    'status': 'completed',
-                    'submitted_by': ObjectId(session['user_id']),
-                    'submitted_at': datetime.utcnow()
-                }
+            # Create submission document
+            submission_data = {
+                'task_id': ObjectId(task_id),
+                'student_id': ObjectId(session['user_id']),
+                'comments': comments,
+                'submitted_at': datetime.utcnow(),
+                'status': 'submitted',  # Changed from 'completed' to 'submitted'
+                'file_path': final_filename
             }
-        )
 
-        flash('Task submitted successfully', 'success')
-        return redirect(url_for('student_dashboard'))
+            # Insert or update submission in started_tasks_collection
+            started_tasks_collection.update_one(
+                {
+                    'task_id': ObjectId(task_id),
+                    'student_id': ObjectId(session['user_id'])
+                },
+                {'$set': submission_data},
+                upsert=True
+            )
+
+            flash('Task submitted successfully', 'success')
+            return redirect(url_for('student_dashboard'))
+        else:
+            flash('Invalid file type. Please upload PDF or Word document.', 'error')
+            return redirect(url_for('student_dashboard'))
 
     except Exception as e:
         print(f"Error in submit_task: {str(e)}")  # Log the error
         flash('An error occurred while submitting the task', 'error')
+        return redirect(url_for('student_dashboard'))
+
+@app.route('/uploads/<filename>')
+@login_required
+def download_file(filename):
+    try:
+        # Check if user has permission to access this file
+        submission = started_tasks_collection.find_one({
+            'file_path': filename
+        })
+        
+        if not submission:
+            flash('File not found', 'error')
+            return redirect(url_for('student_dashboard'))
+            
+        # Check if user is either the student who submitted or the faculty who created the task
+        if str(submission['student_id']) != session['user_id'] and session['user_type'] != 'faculty':
+            flash('Access denied', 'error')
+            return redirect(url_for('student_dashboard'))
+            
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+        
+    except Exception as e:
+        print(f"Error in download_file: {str(e)}")
+        flash('Error downloading file', 'error')
         return redirect(url_for('student_dashboard'))
 
 if __name__ == '__main__':
